@@ -1,0 +1,261 @@
+/* ==========================================
+   Estilos Globais e Reset Básico
+   ========================================== */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding: 20px;
+    background-color: #f8f9fa; /* Fundo cinza claro */
+    color: #333; /* Cor de texto padrão */
+    line-height: 1.6;
+    margin: 0;
+}
+
+h1, h2 {
+    color: #343a40; /* Cinza escuro */
+    margin-bottom: 0.75em;
+    font-weight: 500;
+}
+
+h1 {
+    font-size: 2.2em;
+    border-bottom: 1px solid #dee2e6; /* Linha separadora abaixo do H1 */
+    padding-bottom: 0.3em;
+    margin-bottom: 1em;
+}
+
+h2 {
+    font-size: 1.6em;
+    margin-top: 1.8em;
+}
+
+a {
+    color: #007bff; /* Azul primário */
+    text-decoration: none; /* Sem sublinhado */
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+hr {
+    border: 0;
+    height: 1px;
+    background-color: #dee2e6; /* Cor de borda suave */
+    margin-top: 25px;
+    margin-bottom: 25px;
+}
+
+/* Para centralizar conteúdo como na página de entrada */
+.container-centered {
+    max-width: 550px;
+    margin: 40px auto;
+    padding: 30px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* ==========================================
+   Formulários (Página de Entrada)
+   ========================================== */
+form div {
+    margin-bottom: 20px; /* Espaçamento entre campos */
+}
+
+label {
+    display: block; /* Label acima do campo */
+    margin-bottom: 6px;
+    font-weight: bold;
+    color: #495057; /* Cinza um pouco mais escuro para labels */
+}
+
+input[type=text],
+input[type=tel] {
+    width: 100%;
+    padding: 12px 15px; /* Mais padding */
+    margin-bottom: 5px; /* Reduzido para ficar perto do 'small' */
+    border: 1px solid #ced4da; /* Borda padrão */
+    border-radius: 5px; /* Bordas arredondadas */
+    box-sizing: border-box; /* Padding/border dentro da largura */
+    font-size: 1em;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; /* Transição suave */
+}
+
+input[type=text]:focus,
+input[type=tel]:focus {
+    border-color: #80bdff; /* Azul claro no foco */
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Sombra de foco */
+}
+
+/* Texto de ajuda abaixo do input */
+small {
+    font-size: 0.85em;
+    color: #6c757d; /* Cinza para texto de ajuda */
+    display: block;
+    margin-top: 3px;
+}
+
+/* ==========================================
+   Botões
+   ========================================== */
+button {
+    padding: 12px 20px;
+    background-color: #007bff; /* Azul primário */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 500;
+    transition: background-color 0.15s ease-in-out, opacity 0.15s ease-in-out;
+    margin-right: 8px; /* Espaço entre botões */
+}
+
+button:hover {
+    background-color: #0056b3; /* Azul mais escuro no hover */
+}
+
+button:disabled {
+    background-color: #6c757d; /* Cinza para desabilitado */
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+/* Botão específico para limpar/resetar (vermelho) */
+.clear-list-button {
+    background-color: #dc3545; /* Vermelho perigo */
+}
+
+.clear-list-button:hover {
+    background-color: #c82333; /* Vermelho mais escuro */
+}
+
+/* Contêiner para controles do Admin */
+#admin-controls {
+    margin-bottom: 25px;
+    padding: 15px;
+    background-color: #e9ecef; /* Fundo levemente destacado */
+    border-radius: 5px;
+}
+#admin-controls form {
+    display: inline-block; /* Mantém o botão limpar na mesma linha */
+    margin-left: 15px;
+}
+
+/* ==========================================
+   Tabelas (Página Admin)
+   ========================================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 5px; /* Arredonda cantos da tabela */
+    overflow: hidden; /* Garante que o radius funcione */
+}
+
+th, td {
+    border: 1px solid #dee2e6; /* Borda cinza clara */
+    padding: 14px; /* Bom espaçamento interno */
+    text-align: left;
+    vertical-align: middle; /* Alinha verticalmente */
+}
+
+th {
+    background-color: #f8f9fa; /* Fundo do header quase branco */
+    font-weight: 600; /* Peso da fonte do header */
+    color: #495057;
+    font-size: 0.95em;
+    text-transform: uppercase; /* Opcional: letras maiúsculas */
+    letter-spacing: 0.5px; /* Opcional: espaçamento */
+}
+
+/* Linhas pares com fundo levemente diferente (zebra striping) */
+tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+tbody tr:hover {
+    background-color: #f1f1f1; /* Destaque ao passar o mouse */
+}
+
+
+/* --- Estilos Específicos de Status --- */
+tr.status-waiting {
+    /* Pode adicionar um estilo leve se quiser, ex: */
+    /* font-weight: 500; */
+}
+
+tr.status-called {
+    background-color: #d1ecf1 !important; /* Azul bem claro (sobrescreve zebra/hover) */
+    /* font-style: italic; */
+    color: #0c5460; /* Texto azul escuro */
+}
+
+tr.status-cleared {
+    background-color: #e9ecef !important; /* Cinza bem claro (sobrescreve zebra/hover) */
+    color: #888; /* Texto cinza claro */
+    text-decoration: line-through; /* Tachado */
+    font-size: 0.9em; /* Opcional: Diminui fonte */
+    opacity: 0.7; /* Opcional: Leve transparência */
+}
+
+
+/* ==========================================
+   Mensagens de Feedback
+   ========================================== */
+.message {
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    font-size: 1em;
+    line-height: 1.4;
+}
+
+/* Mensagem de Sucesso (verde) */
+.success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+/* Mensagem de Erro (vermelho) */
+.error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+/* Container para mensagens de admin e JS */
+#admin-messages {
+    margin-bottom: 20px;
+}
+#admin-feedback-js { /* Garante que o feedback JS use o estilo .message */
+    display: none; /* Inicialmente oculto */
+}
+
+
+/* ==========================================
+   Indicadores (Carregando, Fila Vazia, Erro)
+   ========================================== */
+#loading-indicator {
+    padding: 15px;
+    text-align: center;
+    font-style: italic;
+    color: #6c757d;
+    background-color: #f9f9f9;
+}
+
+#no-drivers-row td, #error-loading-row td {
+    text-align: center;
+    font-style: italic;
+    padding: 20px; /* Mais espaço para mensagens de aviso */
+}
+
+#error-loading-row td {
+    color: #721c24; /* Vermelho erro */
+    background-color: #f8d7da; /* Fundo erro */
+}

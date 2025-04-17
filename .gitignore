@@ -1,0 +1,78 @@
+# =========================
+# Arquivos de Log
+# =========================
+*.log
+
+# =========================
+# Arquivos de Banco de Dados Local (Ex: H2)
+# =========================
+# Ignora o diretório 'data' na raiz do projeto onde o H2 pode salvar o arquivo .mv.db
+# Certifique-se que seu application.properties aponta para algo como:
+# spring.datasource.url=jdbc:h2:file:./data/driverdb
+/data/
+
+# =========================
+# Diretórios de Saída da Compilação
+# =========================
+# Maven
+/target/
+# Gradle (caso use ou alguém use)
+/build/
+
+# =========================
+# Arquivos Gerados pelo Maven Wrapper
+# =========================
+# O wrapper em si (.mvn/, mvnw, mvnw.cmd) DEVE ser versionado (commitado).
+# Portanto, NÃO adicione regras para ignorá-los aqui.
+# Se você tem alguma regra global ignorando .mvn, remova-a.
+
+# =========================
+# Arquivos de IDE
+# =========================
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code (caso use)
+.vscode/
+
+# Eclipse / STS (caso alguém use)
+.settings/
+.classpath
+.project
+.apt_generated
+.factorypath
+.springBeans
+.sts4-cache
+
+# NetBeans (caso alguém use)
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# =========================
+# Arquivos do Sistema Operacional
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Arquivos específicos do seu projeto que NÃO devem ir para o Git
+# =========================
+# Se o arquivo HELP.md for realmente algo que você NÃO quer no Git,
+# adicione a linha abaixo. Caso contrário, REMOVA esta linha
+# para que ele SEJA incluído no commit.
+# HELP.md
+
+# =========================
+# Arquivos de Configuração Local (Exemplo)
+# =========================
+# Se você tiver arquivos de configuração que só valem para sua máquina
+# (ex: senhas locais, chaves de API de teste), liste-os aqui.
+# É comum usar um sufixo como -local ou usar .env
+# application-local.properties
+# .env

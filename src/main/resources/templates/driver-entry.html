@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Entrada de Motorista</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        body { max-width: 500px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #fff; }
+        form div { margin-bottom: 18px; }
+         /* Adicionar estilo para input de telefone */
+        input[type=tel] { width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
+        input[type=tel]:focus { border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); }
+    </style>
+</head>
+<body>
+<h1>Registrar Chegada</h1>
+<p>Informe a placa e seu número de telefone com DDD para entrar na fila e receber o aviso por SMS.</p>
+
+<!-- Mensagens de feedback -->
+<div th:if="${successMessage}" class="message success" th:text="${successMessage}"></div>
+<div th:if="${errorMessage}" class="message error" th:text="${errorMessage}"></div>
+
+<!-- Formulário -->
+<form th:action="@{/drivers/add}" th:object="${driver}" method="post" id="driver-form">
+    <div>
+        <label for="licensePlate">Placa do Veículo:</label>
+        <input type="text" id="licensePlate" th:field="*{licensePlate}" placeholder="AAA-1234 ou ABC1D23" required pattern="[A-Za-z]{3}-?[A-Za-z0-9]{4}" title="Formato: AAA-1234 ou ABC1D23" maxlength="8" />
+    </div>
+    <div>
+        <label for="phoneNumber">Telefone Celular (com DDD):</label>
+        <!-- Usar type="tel" para semântica e possível teclado numérico mobile -->
+        <input type="tel" id="phoneNumber" th:field="*{phoneNumber}" placeholder="Ex: 11987654321" required pattern="\+?[0-9]{10,15}" title="Somente números, opcionalmente com + no início (10-15 dígitos)" />
+        <small>Você receberá um SMS neste número quando for sua vez.</small>
+    </div>
+    <div>
+        <button type="submit">Entrar na Fila</button>
+    </div>
+</form>
+
+<hr style="margin-top: 30px; margin-bottom: 20px;">
+<p style="text-align: center; font-size: 0.9em;">
+    <a th:href="@{/admin}">Acesso Administrador</a>
+</p>
+
+</body>
+</html>
