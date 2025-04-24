@@ -1,97 +1,73 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <title>Admin - Fila de Motoristas</title> <!-- Título ajustado -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" th:href="@{/css/style.css}">
+  <title>Fila de Motoristas - Admin</title>
+  <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}">
   <style>
-    /* Adicionar estilo para destacar linhas chamadas */
-    .status-waiting { } /* Sem estilo extra por padrão */
-    .status-called { background-color: #e2f0ff; font-style: italic; color: #555; }
-    .status-cleared { background-color: #f1f1f1; color: #999; text-decoration: line-through; }
-    #admin-messages { margin-bottom: 15px; } /* Espaço para mensagens de admin */
-    #admin-controls button { margin-right: 10px; margin-bottom: 10px;} /* Ajuste de margem */
-
-    /* Estilo básico para o loading */
-    #loading-indicator {
-        padding: 10px;
-        background-color: #f0f0f0;
-        border: 1px dashed #ccc;
-        text-align: center;
-        margin-bottom: 10px;
-        font-style: italic;
-    }
-
-    /* Botão de limpar com cor de aviso */
-    #clear-list-button {
-         background-color: #dc3545; /* Vermelho perigo */
-    }
-     #clear-list-button:hover {
-        background-color: #c82333;
-    }
+    /* Estilos básicos inline - Mova para style.css */
+    .container { max-width: 900px; margin: 40px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background-color: #f9f9f9; }
+    .driver-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .driver-table th, .driver-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    .driver-table th { background-color: #f2f2f2; }
+    .action-buttons { margin-top: 20px; text-align: center; }
+    .action-buttons button { margin: 0 10px; padding: 10px 15px; cursor: pointer; border-radius: 4px; border: none; font-size: 16px; }
+    .btn-success { background-color: #28a745; color: white; }
+    .btn-success:hover:not(:disabled) { background-color: #218838; }
+    .btn-danger { background-color: #dc3545; color: white; }
+    .btn-danger:hover:not(:disabled) { background-color: #c82333; }
+    button:disabled { background-color: #cccccc; cursor: not-allowed; }
+    #admin-feedback { margin-top: 15px; padding: 10px; border-radius: 4px; text-align: center; font-weight: bold; display: none; /* Mostrado via JS */ }
+    #admin-feedback.success { color: #155724; background-color: #d4edda; border: 1px solid #c3e6cb; display: block; }
+    #admin-feedback.error { color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; display: block; }
+    #admin-feedback.info { color: #0c5460; background-color: #d1ecf1; border: 1px solid #bee5eb; display: block; }
+    #no-drivers-message { display: none; text-align: center; margin-top: 20px; font-style: italic; color: #666; }
+    .home-link { text-align: center; margin-top: 30px; }
   </style>
 </head>
 <body>
-<h1>Administração da Fila de Motoristas</h1> <!-- Título ajustado -->
+<div class="container">
+  <h1>Administração da Fila</h1>
 
-<!-- Mensagens de feedback para Admin -->
-<div id="admin-messages">
-  <div th:if="${adminSuccessMessage}" class="message success" th:text="${adminSuccessMessage}"></div>
-  <div th:if="${adminErrorMessage}" class="message error" th:text="${adminErrorMessage}"></div>
-  <!-- Mensagem de feedback do JS (será preenchida via JS) -->
-  <div id="admin-feedback-js" class="message" style="display: none;"></div>
+  <div class="queue-table-container">
+    <table class="driver-table" id="driver-queue-table">
+      <thead>
+      <tr>
+        <th>Pos.</th>
+        <th>Nome</th>
+        <th>Placa</th>
+        <th>Telefone</th> <!-- Coluna adicionada -->
+        <th>Entrada</th>
+        <!-- <th>Ação</th> Coluna de Ação individual removida -->
+      </tr>
+      </thead>
+      <tbody id="driver-queue-body">
+      <!-- Carregando... será substituído pelo JS -->
+      <tr><td colspan="5">Carregando fila...</td></tr>
+      </tbody>
+    </table>
+    <!-- Mensagem para quando a fila estiver vazia -->
+    <div id="no-drivers-message">
+      Nenhum motorista aguardando no momento.
+    </div>
+  </div>
+
+  <!-- Botões de Ação Gerais -->
+  <div class="action-buttons">
+    <button id="call-next-btn" class="btn btn-success" disabled>Chamar Próximo</button>
+    <button id="clear-queue-btn" class="btn btn-danger" disabled>Limpar Lista de Espera</button>
+  </div>
+
+  <!-- Feedback para Ações do Admin -->
+  <div id="admin-feedback"></div>
+
+  <p class="home-link">
+    <a th:href="@{/}">Voltar para Entrada de Motorista</a>
+  </p>
 </div>
 
-<!-- Controles Principais do Admin -->
-<div id="admin-controls">
-  <!-- Estes botões precisam ter lógica no admin.js -->
-  <button id="call-next-button" type="button">Chamar Próximo Motorista</button>
-  <button id="recall-button" type="button" disabled>Chamar Novamente (Último)</button>
-
-  <!-- Botão Limpar Fila CORRIGIDO - Não está mais dentro de um form -->
-  <button type="button" id="clear-list-button" class="clear-list-button" style="margin-left: 20px;">Limpar Fila de Espera</button>
-  <!-- A confirmação (onclick) foi removida daqui e deve ser feita no admin.js -->
-
-</div>
-
-<hr>
-
-<!-- Tabela da Fila -->
-<div id="driver-list">
-  <h2>Fila Atual</h2>
-  <!-- Indicador de carregamento, será mostrado/escondido pelo JS -->
-  <div id="loading-indicator" style="display: none;">Carregando dados da fila...</div>
-  <table border="1" id="drivers-table"> <!-- Adicionado ID à tabela para facilitar seleção -->
-    <thead>
-    <tr>
-      <!-- Ajustando colunas conforme necessidade (Ex: sem telefone, com ações) -->
-      <th>Entrada</th>
-      <th>Placa</th>
-      <th>Nome</th> <!-- Assumindo que temos nome do motorista -->
-      <th>Status</th>
-      <th>Ações</th> <!-- Coluna para o botão Chamar individual -->
-      <!-- <th>Chamada</th> Pode ser adicionado depois -->
-    </tr>
-    </thead>
-    <tbody>
-    <!-- Linhas preenchidas pelo JavaScript -->
-    <tr id="no-drivers-row" style="display: none;">
-      <td colspan="5" style="text-align: center; font-style: italic;">Fila vazia.</td> <!-- Ajustado colspan -->
-    </tr>
-    <tr id="error-loading-row" style="display: none;">
-      <td colspan="5" style="text-align: center; color: red;">Erro ao carregar a fila. Verifique o console (F12).</td> <!-- Ajustado colspan -->
-    </tr>
-    </tbody>
-  </table>
-</div>
-
-<hr style="margin-top: 30px; margin-bottom: 20px;">
-<p style="text-align: center; font-size: 0.9em;">
-  <a th:href="@{/}">Ir para Entrada de Motorista</a>
-</p>
-
-<!-- Script Admin -->
+<!-- Script JavaScript para interatividade -->
 <script th:src="@{/js/admin.js}"></script>
 </body>
 </html>

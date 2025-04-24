@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrada de Motorista</title>
+    <!-- Assume que você tem um style.css em static/css -->
+    <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}">
+    <style>
+        /* Estilos básicos inline para demonstração - Mova para style.css */
+        .container { max-width: 500px; margin: 40px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background-color: #f9f9f9; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input[type="text"], .form-group input[type="tel"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .alert { padding: 15px; margin-bottom: 20px; border: 1px solid transparent; border-radius: 4px; }
+        .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+        .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
+        .admin-link, .home-link { text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Registro na Fila</h1>
+
+    <!-- Área para exibir mensagens de sucesso ou erro -->
+    <div th:if="${successMessage}" class="alert alert-success" role="alert" id="success-alert">
+        <p th:text="${successMessage}"></p>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" id="error-alert">
+        <p th:text="${errorMessage}"></p>
+    </div>
+
+    <!-- Formulário para adicionar motorista -->
+    <form th:action="@{/drivers/add}" method="post" class="driver-form">
+        <div class="form-group">
+            <label for="plate">Placa do Veículo:</label>
+            <!-- Exemplo de validação HTML5 básica -->
+            <input type="text" id="plate" name="plate" required placeholder="AAA-1234 ou ABC1D23"
+                   pattern="^[A-Za-z]{3}-?\d[A-Za-z0-9]\d{2}$"
+                   title="Formato esperado: AAA-1234 ou ABC1D23">
+        </div>
+        <div class="form-group">
+            <label for="name">Nome do Motorista:</label>
+            <input type="text" id="name" name="name" required minlength="3">
+        </div>
+        <div class="form-group">
+            <label for="phoneNumber">Telefone (com código do país e DDD):</label>
+            <!-- Validação para iniciar com '+' seguido por números -->
+            <input type="tel" id="phoneNumber" name="phoneNumber" required placeholder="+5511987654321"
+                   pattern="^\+[1-9]\d{1,14}$"
+                   title="Formato internacional: +CódigoPaísCódigoÁreaNúmero (ex: +55119...)">
+        </div>
+        <button type="submit" class="btn btn-primary">Entrar na Fila</button>
+    </form>
+
+    <p class="admin-link">
+        <a th:href="@{/admin}">Ver Fila (Administrador)</a>
+    </p>
+</div>
+
+<!-- Script para esconder alertas após um tempo -->
+<script>
+    const hideElement = (selector, timeout) => {
+        const element = document.getElementById(selector);
+        if (element) {
+            setTimeout(() => { element.style.display = 'none'; }, timeout);
+        }
+    };
+    hideElement('success-alert', 5000); // Esconde sucesso após 5s
+    hideElement('error-alert', 8000);  // Esconde erro após 8s
+</script>
+</body>
+</html>

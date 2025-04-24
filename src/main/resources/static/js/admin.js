@@ -1,297 +1,237 @@
-// Executa o código quando o HTML estiver completamente carregado
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("Admin.js loaded and running!"); // Confirma que o script carregou
+/**
+ * admin.js - Lógica para a página de administração da fila de motoristas.
+ */
+document.addEventListener('DOMContentLoaded', function() {
 
-    // === Seletores de Elementos ===
-    const tableBody = document.querySelector('#drivers-table tbody');
-    const noDriversRow = document.getElementById('no-drivers-row');
-    const errorLoadingRow = document.getElementById('error-loading-row');
-    const loadingIndicator = document.getElementById('loading-indicator');
-    const adminFeedbackDiv = document.getElementById('admin-feedback-js');
+    // Elementos da UI
+    const queueTableBody = document.getElementById('driver-queue-body');
+    const callNextButton = document.getElementById('call-next-btn');
+    const clearQueueButton = document.getElementById('clear-queue-btn');
+    const adminFeedbackDiv = document.getElementById('admin-feedback');
+    const noDriversMessageDiv = document.getElementById('no-drivers-message');
+    const queueTable = document.getElementById('driver-queue-table'); // Referência à tabela inteira
 
-    const callNextButton = document.getElementById('call-next-button');
-    const recallButton = document.getElementById('recall-button');
-    const clearListButton = document.getElementById('clear-list-button');
+    // Estado
+    let pollingIntervalId = null;
+    const POLLING_INTERVAL_MS = 7000; // Atualizar a cada 7 segundos
 
-    // === Estado ===
-    let lastCalledDriverId = null; // Guarda o ID do último motorista chamado com sucesso
-    const POLLING_INTERVAL_MS = 5000; // Atualizar a cada 5 segundos
-
-    // === Funções Auxiliares ===
+    // --- Funções Principais ---
 
     /**
-     * Exibe uma mensagem de feedback para o administrador.
-     * @param {string} message A mensagem a ser exibida.
-     * @param {boolean} isError Define se a mensagem é de erro (true) ou sucesso (false).
+     * Busca os dados da fila na API e atualiza a tabela na interface.
      */
-    const showAdminFeedback = (message, isError = false) => {
-        if (!adminFeedbackDiv) return; // Segurança se o elemento não existir
-
-        adminFeedbackDiv.textContent = message;
-        adminFeedbackDiv.className = 'message'; // Reseta classes
-        if (isError) {
-            adminFeedbackDiv.classList.add('error');
-        } else {
-            adminFeedbackDiv.classList.add('success');
-        }
-        adminFeedbackDiv.style.display = 'block';
-
-        // Opcional: Esconder a mensagem após alguns segundos
-        setTimeout(() => {
-            adminFeedbackDiv.style.display = 'none';
-            adminFeedbackDiv.textContent = '';
-            adminFeedbackDiv.className = 'message';
-        }, 5000); // Esconde após 5 segundos
-    };
-
-    /**
-     * Formata um timestamp ISO (vindo do Java LocalDateTime) para Hora:Minuto:Segundo.
-     * Retorna '-' se o timestamp for inválido.
-     * @param {string | null} isoTimestamp String do timestamp ou null.
-     * @returns {string} Hora formatada ou '-'.
-     */
-    const formatTime = (isoTimestamp) => {
-        if (!isoTimestamp) return '-';
+    async function fetchAndUpdateQueue() {
+        console.debug('Polling: Buscando dados da fila...'); // Usar debug para logs frequentes
         try {
-            return new Date(isoTimestamp).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-        } catch (e) {
-            console.error("Error formatting time:", isoTimestamp, e);
-            return '-';
-        }
-    };
+            const response = await fetch('/admin/queue'); // Endpoint da API
 
-    // === Lógica Principal de Atualização ===
-
-    /**
-     * Busca os dados da API e atualiza a tabela de motoristas na interface.
-     */
-    const fetchAndUpdateDrivers = async () => {
-        console.log("Fetching drivers...");
-        if(loadingIndicator) loadingIndicator.style.display = 'block'; // Mostra carregando
-        if(errorLoadingRow) errorLoadingRow.style.display = 'none'; // Esconde erro prévio
-        if(noDriversRow) noDriversRow.style.display = 'none'; // Esconde msg de vazio prévia
-
-        try {
-            const response = await fetch('/api/drivers/waiting');
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                // Tratar erro da API (ex: servidor fora do ar, erro 500)
+                throw new Error(`Erro ${response.status}: ${response.statusText || 'Falha ao buscar dados da fila'}`);
             }
-            const drivers = await response.json();
 
-            // --- ADICIONE ESTA LINHA ---
-            console.log("Dados recebidos da API:", JSON.stringify(drivers)); // Mostra exatamente o que foi recebido
-
-            // Limpa o corpo da tabela atual
-            tableBody.innerHTML = '';
-
-            if (!drivers || drivers.length === 0) {
-                console.log("JS interpretou: Fila vazia."); // Confirma que entrou neste bloco
-                if(noDriversRow) noDriversRow.style.display = '';
-                tableBody.appendChild(noDriversRow);
-            } else {
-                console.log(`JS interpretou: ${drivers.length} motoristas encontrados.`); // Confirma que entrou neste bloco
-                if(noDriversRow) noDriversRow.style.display = 'none'; // Esconde a linha de vazio
-
-                drivers.forEach((driver, index) => {
-                    const row = tableBody.insertRow();
-
-                    // Aplicar classe CSS com base no status
-                    row.classList.add(`status-${driver.status ? driver.status.toLowerCase() : 'unknown'}`);
-
-                    // Colunas (ajuste a ordem e o conteúdo conforme o HTML)
-                    row.insertCell(0).textContent = formatTime(driver.entryTimestamp);
-                    row.insertCell(1).textContent = driver.licensePlate || '-';
-                    row.insertCell(2).textContent = driver.driverName || '-';
-                    row.insertCell(3).textContent = driver.status || 'DESCONHECIDO';
-
-                    // Coluna de Ações
-                    const actionCell = row.insertCell(4);
-                    if (driver.status === 'WAITING') {
-                        const callButton = document.createElement('button');
-                        callButton.textContent = 'Chamar';
-                        callButton.classList.add('call-individual-button'); // Classe para identificar
-                        callButton.dataset.driverId = driver.id; // Guarda o ID no botão
-                        actionCell.appendChild(callButton);
-                    } else {
-                        actionCell.textContent = '-'; // Sem ações para não-esperando
-                    }
-                });
-            }
+            const drivers = await response.json(); // Converte a resposta para um array de objetos
+            updateQueueTable(drivers); // Chama a função para atualizar a UI
 
         } catch (error) {
-            console.error('Error fetching or updating drivers:', error);
-            if(errorLoadingRow) errorLoadingRow.style.display = ''; // Mostra linha de erro
-            tableBody.innerHTML = ''; // Limpa qualquer conteúdo anterior
-            tableBody.appendChild(errorLoadingRow); // Adiciona a linha de erro
-            showAdminFeedback('Erro ao buscar dados da fila. Tente novamente.', true);
-        } finally {
-            if(loadingIndicator) loadingIndicator.style.display = 'none'; // Esconde carregando
+            console.error("Erro durante fetchAndUpdateQueue:", error);
+            displayAdminFeedback(`Erro ao atualizar fila: ${error.message}`, 'error');
+            // Em caso de erro, pode ser útil desabilitar botões ou mostrar estado de erro na tabela
+            queueTableBody.innerHTML = '<tr><td colspan="5" style="color: red; text-align: center;">Falha ao carregar dados. Tentando novamente...</td></tr>';
+             noDriversMessageDiv.style.display = 'none';
+             queueTable.style.display = ''; // Garante que a tabela (com a msg de erro) esteja visível
+             disableActionButtons(); // Desabilita ações se não puder carregar
         }
-    };
-
-    // === Funções de Manipulação de Eventos (Handlers) ===
+    }
 
     /**
-     * Chama um motorista específico pela API.
-     * @param {string | number} driverId O ID do motorista a ser chamado.
+     * Atualiza a tabela HTML com os dados dos motoristas recebidos.
+     * @param {Array<Object>} drivers - Array de objetos motorista.
      */
-    const handleCallIndividual = async (driverId) => {
-        if (!driverId) {
-            console.warn("Tentativa de chamar motorista sem ID.");
-            return;
-        }
-        console.log(`Calling driver ${driverId}`);
-        showAdminFeedback(`Chamando motorista ID ${driverId}...`); // Feedback inicial
+    function updateQueueTable(drivers) {
+        queueTableBody.innerHTML = ''; // Limpa conteúdo atual
 
-        try {
-            const response = await fetch(`/api/drivers/${driverId}/call`, {
-                method: 'POST',
-                headers: {
-                    // Incluir headers CSRF se o Spring Security estiver ativo
+        if (drivers && drivers.length > 0) {
+            queueTable.style.display = ''; // Mostra a tabela
+            noDriversMessageDiv.style.display = 'none'; // Esconde mensagem de fila vazia
+
+            drivers.forEach((driver, index) => {
+                const row = queueTableBody.insertRow();
+                row.insertCell(0).textContent = index + 1; // Posição na fila
+                row.insertCell(1).textContent = driver.name || 'N/A';
+                row.insertCell(2).textContent = driver.plate || 'N/A';
+                row.insertCell(3).textContent = driver.phoneNumber || 'N/A'; // Exibe o telefone
+
+                // Formata a data/hora de entrada
+                let entryTimeFormatted = 'N/A';
+                if (driver.entryTime) {
+                    try {
+                        entryTimeFormatted = new Date(driver.entryTime).toLocaleString('pt-BR', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit', second: '2-digit'
+                        });
+                    } catch (e) { console.warn("Erro ao formatar data:", driver.entryTime, e); }
                 }
+                row.insertCell(4).textContent = entryTimeFormatted;
+
+                // Coluna de ação removida, usamos botões gerais
+                // row.insertCell(5).innerHTML = `<button class="btn btn-sm btn-primary" disabled>Chamar</button>`;
             });
 
-            if (response.ok) {
-                console.log(`Successfully called driver ${driverId}`);
-                lastCalledDriverId = driverId; // Guarda o ID para o botão "Recall"
-                if (recallButton) recallButton.disabled = false; // Habilita o recall
-                showAdminFeedback(`Motorista ID ${driverId} chamado com sucesso.`);
-                fetchAndUpdateDrivers(); // Atualiza a lista imediatamente
-            } else {
-                console.error(`Failed to call driver ${driverId}: ${response.status} ${response.statusText}`);
-                const errorText = await response.text(); // Tenta pegar mais detalhes do erro
-                showAdminFeedback(`Falha ao chamar motorista ID ${driverId}. ${response.statusText} ${errorText ? `(${errorText})` : ''}`, true);
-            }
-        } catch (error) {
-            console.error('Error calling driver:', error);
-            showAdminFeedback(`Erro de rede ao tentar chamar motorista ID ${driverId}.`, true);
-        }
-    };
+            // Habilita os botões de ação, pois há motoristas
+            enableActionButtons();
 
-    /**
-     * Encontra o primeiro motorista na fila (na tabela) e o chama.
-     */
-    const handleCallNext = () => {
-        console.log("Call Next button clicked");
-        // Encontra o primeiro botão "Chamar" individual visível na tabela
-        const firstCallButton = tableBody.querySelector('.call-individual-button');
-
-        if (firstCallButton && firstCallButton.dataset.driverId) {
-            const driverIdToCall = firstCallButton.dataset.driverId;
-            handleCallIndividual(driverIdToCall);
         } else {
-            console.log("No waiting drivers found to call next.");
-            showAdminFeedback("Nenhum motorista na fila para chamar.");
+            // Fila vazia
+            queueTable.style.display = 'none'; // Esconde a tabela
+            noDriversMessageDiv.style.display = 'block'; // Mostra mensagem de fila vazia
+            disableActionButtons(); // Desabilita os botões
         }
-    };
+         console.debug(`Tabela atualizada com ${drivers ? drivers.length : 0} motoristas.`);
+    }
 
     /**
-     * Chama novamente o último motorista que foi chamado com sucesso.
+     * Envia requisição para chamar o próximo motorista.
      */
-    const handleRecall = () => {
-        console.log("Recall button clicked");
-        if (lastCalledDriverId) {
-            console.log(`Recalling driver ${lastCalledDriverId}`);
-            showAdminFeedback(`Re-chamando motorista ID ${lastCalledDriverId}...`);
-            handleCallIndividual(lastCalledDriverId); // Reutiliza a função de chamar
-        } else {
-            console.log("No driver has been called yet to recall.");
-            showAdminFeedback("Nenhum motorista chamado recentemente para chamar novamente.");
-            if(recallButton) recallButton.disabled = true; // Garante que está desabilitado
-        }
-    };
-
-    /**
-     * Limpa a lista de espera via API após confirmação.
-     */
-    const handleClearList = async () => {
-        console.log("Clear List button clicked");
-        // Mensagem de confirmação que estava no HTML
-        if (!confirm('ATENÇÃO! Isso marcará todos os motoristas em espera como "CLEARED". Deseja continuar?')) {
-            console.log("Clear list cancelled by user.");
-            return; // Para se o usuário clicar em Cancelar
-        }
-
-        console.log('Clearing waiting list via API...');
-        showAdminFeedback('Limpando fila de espera...');
+    async function callNextDriverAction() {
+        console.log("Botão 'Chamar Próximo' clicado.");
+        disableActionButtons(); // Desabilita botões durante a ação
+        displayAdminFeedback('Chamando próximo motorista...', 'info');
 
         try {
-            const response = await fetch('/api/drivers/clear', {
-                method: 'POST',
-                 headers: {
-                    // Incluir headers CSRF se necessário
-                 }
-            });
+            const response = await fetch('/admin/call-next', { method: 'POST' });
 
             if (response.ok) {
-                const message = await response.text(); // Pega a msg de sucesso da API
-                console.log(`Successfully cleared list: ${message}`);
-                showAdminFeedback(message || 'Fila de espera limpa com sucesso.');
-                lastCalledDriverId = null; // Reseta o último chamado, pois a fila foi limpa
-                if (recallButton) recallButton.disabled = true; // Desabilita o recall
-                fetchAndUpdateDrivers(); // Atualiza a lista
+                const calledDriver = await response.json();
+                displayAdminFeedback(`Motorista ${calledDriver.name} (${calledDriver.plate}) chamado com sucesso!`, 'success');
+                console.info("Chamada bem-sucedida:", calledDriver);
+                fetchAndUpdateQueue(); // Atualiza a tabela imediatamente
+            } else if (response.status === 404) {
+                const message = await response.text();
+                displayAdminFeedback(message || 'Nenhum motorista para chamar.', 'info');
+                console.info("Tentativa de chamada, mas fila vazia.");
+                // Os botões serão reavaliados pelo fetchAndUpdateQueue
             } else {
-                console.error(`Failed to clear list: ${response.status} ${response.statusText}`);
-                 const errorText = await response.text();
-                 showAdminFeedback(`Falha ao limpar a fila. ${response.statusText} ${errorText ? `(${errorText})` : ''}`, true);
+                // Outro erro do servidor
+                const errorText = await response.text();
+                throw new Error(`Erro ${response.status}: ${errorText || response.statusText}`);
             }
         } catch (error) {
-            console.error('Error clearing list:', error);
-             showAdminFeedback('Erro de rede ao tentar limpar a fila.', true);
+            console.error("Erro durante callNextDriverAction:", error);
+            displayAdminFeedback(`Erro ao chamar: ${error.message}`, 'error');
+             enableActionButtons(); // Reabilita botões em caso de erro para nova tentativa
         }
-    };
+        // Nota: Não precisamos reabilitar os botões aqui explicitamente se o fetchAndUpdateQueue for chamado,
+        // pois ele avaliará o estado da fila e habilitará/desabilitará conforme necessário.
+        // Mas podemos reabilitar em caso de erro para permitir nova tentativa.
+    }
 
-    // === Anexar Event Listeners ===
+    /**
+     * Envia requisição para limpar a lista de espera.
+     */
+    async function clearQueueAction() {
+        console.log("Botão 'Limpar Lista' clicado.");
 
-    // Botão Chamar Próximo
+        // Confirmação crucial
+        if (!confirm('ATENÇÃO!\n\nTem certeza que deseja remover TODOS os motoristas da lista de espera?\n\nEsta ação não pode ser desfeita.')) {
+            console.log("Ação de limpar fila cancelada pelo usuário.");
+            return; // Interrompe se o usuário cancelar
+        }
+
+        disableActionButtons();
+        displayAdminFeedback('Limpando a lista de espera...', 'info');
+
+        try {
+            const response = await fetch('/admin/clear-queue', { method: 'POST' });
+            const responseText = await response.text(); // Pega a resposta como texto
+
+            if (response.ok) {
+                displayAdminFeedback(responseText || 'Lista de espera limpa com sucesso!', 'success');
+                console.warn("Lista de espera limpa via API.");
+                fetchAndUpdateQueue(); // Atualiza a tabela
+            } else {
+                throw new Error(`Erro ${response.status}: ${responseText || response.statusText}`);
+            }
+        } catch (error) {
+            console.error("Erro durante clearQueueAction:", error);
+            displayAdminFeedback(`Erro ao limpar fila: ${error.message}`, 'error');
+             enableActionButtons(); // Reabilita em caso de erro
+        }
+    }
+
+    /**
+     * Exibe mensagens de feedback na área designada.
+     * @param {string} message - A mensagem a ser exibida.
+     * @param {'info'|'success'|'error'} type - O tipo de mensagem para estilização.
+     */
+    function displayAdminFeedback(message, type = 'info') {
+        adminFeedbackDiv.textContent = message;
+        adminFeedbackDiv.className = type; // Aplica a classe CSS ('info', 'success', 'error')
+        adminFeedbackDiv.style.display = 'block'; // Garante que esteja visível
+
+        // Limpa a mensagem após um tempo
+        setTimeout(() => {
+            adminFeedbackDiv.textContent = '';
+            adminFeedbackDiv.style.display = 'none';
+             adminFeedbackDiv.className = '';
+        }, 6000); // Mensagem some após 6 segundos
+    }
+
+    /** Habilita os botões de ação */
+    function enableActionButtons() {
+        if (callNextButton) callNextButton.disabled = false;
+        if (clearQueueButton) clearQueueButton.disabled = false;
+    }
+
+    /** Desabilita os botões de ação */
+    function disableActionButtons() {
+        if (callNextButton) callNextButton.disabled = true;
+        if (clearQueueButton) clearQueueButton.disabled = true;
+    }
+
+
+    // --- Inicialização e Event Listeners ---
+
+    /** Inicia o polling para buscar dados da fila periodicamente */
+    function startPolling() {
+        console.log(`Iniciando polling a cada ${POLLING_INTERVAL_MS}ms`);
+        stopPolling(); // Garante que não haja múltiplos intervalos rodando
+        fetchAndUpdateQueue(); // Busca inicial imediata
+        pollingIntervalId = setInterval(fetchAndUpdateQueue, POLLING_INTERVAL_MS);
+    }
+
+    /** Para o polling */
+    function stopPolling() {
+        if (pollingIntervalId) {
+            console.log("Parando polling.");
+            clearInterval(pollingIntervalId);
+            pollingIntervalId = null;
+        }
+    }
+
+    // Adiciona listeners aos botões
     if (callNextButton) {
-        callNextButton.addEventListener('click', handleCallNext);
+        callNextButton.addEventListener('click', callNextDriverAction);
     } else {
-        console.warn("Button with id 'call-next-button' not found.");
+         console.error("Botão 'call-next-btn' não encontrado!");
     }
 
-    // Botão Chamar Novamente (Recall)
-    if (recallButton) {
-        recallButton.addEventListener('click', handleRecall);
+    if (clearQueueButton) {
+        clearQueueButton.addEventListener('click', clearQueueAction);
     } else {
-        console.warn("Button with id 'recall-button' not found.");
+         console.error("Botão 'clear-queue-btn' não encontrado!");
     }
 
-    // Botão Limpar Fila
-    if (clearListButton) {
-        clearListButton.addEventListener('click', handleClearList);
-    } else {
-        console.warn("Button with id 'clear-list-button' not found.");
-    }
+    // Inicia o processo
+    startPolling();
 
-    // Delegação de Eventos para botões "Chamar" individuais na tabela
-    // Isso é mais eficiente do que adicionar um listener para cada botão
-    if (tableBody) {
-        tableBody.addEventListener('click', (event) => {
-            // Verifica se o clique foi em um elemento com a classe 'call-individual-button'
-            if (event.target && event.target.classList.contains('call-individual-button')) {
-                const driverId = event.target.dataset.driverId;
-                if (driverId) {
-                    handleCallIndividual(driverId);
-                } else {
-                    console.warn("Call button clicked but driverId dataset is missing.");
-                }
-            }
-        });
-    } else {
-         console.error("Table body not found for event delegation.");
-    }
+    // Opcional: Pausar polling quando a aba está inativa (economiza recursos)
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopPolling();
+        } else {
+            startPolling();
+        }
+    });
 
-
-    // === Inicialização ===
-    fetchAndUpdateDrivers(); // Carrega os dados iniciais ao carregar a página
-
-    // Configura o polling para atualizar a lista periodicamente
-    setInterval(fetchAndUpdateDrivers, POLLING_INTERVAL_MS);
-    console.log(`Polling setup every ${POLLING_INTERVAL_MS / 1000} seconds.`);
-
-}); // Fim do DOMContentLoaded
+});

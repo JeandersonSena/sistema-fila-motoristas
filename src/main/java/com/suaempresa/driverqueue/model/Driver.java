@@ -1,66 +1,130 @@
 package com.suaempresa.driverqueue.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.*; // Certifique-se de usar jakarta.persistence se for Spring Boot 3+
 import java.time.LocalDateTime;
+import java.util.Objects;
 
-@Entity
+@Entity // Marca esta classe como uma tabela no banco de dados
 public class Driver {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id // Chave primária
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Auto-incremento
     private Long id;
 
-    @Column(nullable = false, length = 10)
-    private String licensePlate; // Placa
+    @Column(nullable = false) // Não pode ser nulo no banco
+    private String plate;
 
-    @Column(nullable = false, length = 20) // Ajuste o tamanho conforme necessário
-    private String phoneNumber; // Número de telefone (formato E.164 recomendado para Twilio: +55119...)
+    @Column(nullable = false)
+    private String name;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime entryTimestamp; // Hora de Entrada
+    @Column(nullable = false) // Adicionado campo para telefone
+    private String phoneNumber;
 
-    @Column(nullable = false, unique = true) // Número único na fila ATIVA
-    private Long sequenceNumber; // Número sequencial na fila
+    @Column(nullable = false)
+    private LocalDateTime entryTime; // Horário de entrada na fila
 
-    @Column(nullable = false, length = 20)
-    private String status; // WAITING, CALLED
+    private LocalDateTime calledTime; // Horário em que foi chamado (pode ser nulo)
 
-    @Column // Pode ser nulo até ser chamado
-    private LocalDateTime callTimestamp; // Hora da chamada
+    @Enumerated(EnumType.STRING) // Salva o nome do enum (WAITING, CALLED, CLEARED) no banco
+    @Column(nullable = false)
+    private DriverStatus status;
 
-    // Construtor padrão
-    public Driver() {
-        this.entryTimestamp = LocalDateTime.now();
-        this.status = "WAITING";
+    // Enum para os status possíveis
+    public enum DriverStatus {
+        WAITING, // Aguardando na fila
+        CALLED,  // Já foi chamado
+        CLEARED  // Removido da fila pelo admin (sem ser chamado)
     }
 
-    // Construtor para criação
-    public Driver(String licensePlate, String phoneNumber, Long sequenceNumber) {
-        this(); // Chama construtor padrão
-        this.licensePlate = licensePlate;
-        this.phoneNumber = phoneNumber; // Armazenar com +código_país? Validar formato?
-        this.sequenceNumber = sequenceNumber;
+    // --- Construtores ---
+    public Driver() {
+        // Construtor padrão exigido pelo JPA
     }
 
     // --- Getters e Setters ---
-    // (Gerar com Alt+Insert no IntelliJ)
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getLicensePlate() { return licensePlate; }
-    public void setLicensePlate(String licensePlate) { this.licensePlate = licensePlate; }
-    public String getPhoneNumber() { return phoneNumber; }
-    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
-    public LocalDateTime getEntryTimestamp() { return entryTimestamp; }
-    public void setEntryTimestamp(LocalDateTime entryTimestamp) { this.entryTimestamp = entryTimestamp; }
-    public Long getSequenceNumber() { return sequenceNumber; }
-    public void setSequenceNumber(Long sequenceNumber) { this.sequenceNumber = sequenceNumber; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public LocalDateTime getCallTimestamp() { return callTimestamp; }
-    public void setCallTimestamp(LocalDateTime callTimestamp) { this.callTimestamp = callTimestamp; }
+    // (Gerados automaticamente pela IDE ou escritos manualmente)
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getPlate() {
+        return plate;
+    }
+
+    public void setPlate(String plate) {
+        this.plate = plate;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public LocalDateTime getEntryTime() {
+        return entryTime;
+    }
+
+    public void setEntryTime(LocalDateTime entryTime) {
+        this.entryTime = entryTime;
+    }
+
+    public LocalDateTime getCalledTime() {
+        return calledTime;
+    }
+
+    public void setCalledTime(LocalDateTime calledTime) {
+        this.calledTime = calledTime;
+    }
+
+    public DriverStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(DriverStatus status) {
+        this.status = status;
+    }
+
+    // --- equals, hashCode, toString (Opcional, mas bom para debug) ---
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Driver driver = (Driver) o;
+        return Objects.equals(id, driver.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
 
     @Override
     public String toString() {
-        return "Driver{" + "id=" + id + ", plate='" + licensePlate + '\'' + ", phone='" + phoneNumber + '\'' + ", seq=" + sequenceNumber + ", status='" + status + '\'' + '}';
+        return "Driver{" +
+                "id=" + id +
+                ", plate='" + plate + '\'' +
+                ", name='" + name + '\'' +
+                ", phoneNumber='" + phoneNumber + '\'' +
+                ", entryTime=" + entryTime +
+                ", calledTime=" + calledTime +
+                ", status=" + status +
+                '}';
     }
 }
