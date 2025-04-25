@@ -1,4 +1,4 @@
-﻿package com.suaempresa.driverqueue.config; // Certifique-se que o pacote está correto
+package com.suaempresa.driverqueue; // Certifique-se que o pacote está correto
 
 import com.zaxxer.hikari.HikariDataSource; // Pool de conexões eficiente
 import org.slf4j.Logger;
