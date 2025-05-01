@@ -1,0 +1,25 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Erro Interno</title>
+    <!-- Adicione seu CSS se desejar -->
+    <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}">
+    <style>
+        /* Estilos básicos */
+        .error-container { max-width: 600px; margin: 50px auto; padding: 30px; border: 1px solid #dc3545; border-radius: 5px; text-align: center; background-color: #f8d7da;}
+        .error-container h1 { color: #721c24; }
+    </style>
+</head>
+<body>
+<div class="error-container">
+    <h1>Oops! Algo deu errado.</h1>
+    <p>Ocorreu um erro inesperado em nossos servidores.</p>
+    <p th:if="${errorMessage}" th:text="${errorMessage}">Mensagem de erro aqui.</p>
+    <p th:if="${exceptionDetails}">Detalhes: <em th:text="${exceptionDetails}"></em></p>
+    <p>Por favor, tente novamente mais tarde ou <a th:href="@{/}">volte para a página inicial</a>.</p>
+    <!-- Você pode adicionar um ID de erro único aqui se precisar rastrear -->
+    <!-- <p th:if="${traceId}">Error ID: <span th:text="${traceId}"></span></p> -->
+</div>
+</body>
+</html>
