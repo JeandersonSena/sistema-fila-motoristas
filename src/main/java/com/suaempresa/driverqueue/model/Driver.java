@@ -59,7 +59,11 @@ public class Driver {
         /** O motorista já foi chamado pelo administrador. */
         CALLED,
         /** O motorista foi removido da fila pelo administrador (sem ser chamado). */
-        CLEARED
+        CLEARED,
+        /** O motorista foi chamado e compareceu. */
+        ATTENDED,
+        /** O motorista foi chamado mas não compareceu. */
+        NO_SHOW
     }
 
     /** Construtor padrão sem argumentos exigido pelo JPA. */

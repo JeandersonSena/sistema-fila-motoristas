@@ -2,13 +2,12 @@ package com.suaempresa.driverqueue.service;
 
 import com.suaempresa.driverqueue.model.Driver;
 import com.suaempresa.driverqueue.repository.DriverRepository;
-import com.suaempresa.driverqueue.service.TwilioService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,6 +18,7 @@ import java.util.Optional;
 @Service
 public class DriverService {
 
+    // Declaração correta do Logger para esta classe
     private static final Logger log = LoggerFactory.getLogger(DriverService.class);
 
     private final DriverRepository driverRepository;
@@ -38,19 +38,19 @@ public class DriverService {
 
     /**
      * Adiciona um novo motorista à fila de espera.
-     * Realiza validações básicas nos dados de entrada.
+     * Realiza validações básicas nos dados de entrada (validação principal via DTO).
      *
-     * @param plate Placa do veículo do motorista (formato Mercosul ou antigo).
+     * @param plate Placa do veículo do motorista.
      * @param name Nome do motorista.
-     * @param phoneNumber Número de telefone do motorista (formato E.164, ex: +55...).
+     * @param phoneNumber Número de telefone do motorista (formato E.164).
      * @return O objeto Driver persistido com ID e status WAITING.
      * @throws IllegalArgumentException Se a placa, nome ou telefone forem inválidos ou vazios.
-     *         Também pode lançar exceções do banco de dados se houver violação de constraints (ex: placa duplicada).
      */
-    @Transactional // Garante atomicidade da operação
+    @Transactional // Garante atomicidade
     public Driver addDriver(String plate, String name, String phoneNumber) {
         log.debug("addDriver: Iniciando adição para Placa={}, Nome={}, Telefone={}", plate, name, phoneNumber);
-        // 1. Validação de Entrada (Simples - Validação principal via DTO/Bean Validation)
+
+        // Validações de entrada básicas (principais devem estar no DTO/Controller com @Valid)
         if (plate == null || plate.trim().isEmpty()) {
             log.warn("addDriver: Falha na validação - Placa obrigatória.");
             throw new IllegalArgumentException("Placa do veículo é obrigatória.");
@@ -64,15 +64,15 @@ public class DriverService {
             throw new IllegalArgumentException("Número de telefone é obrigatório.");
         }
 
-        // 2. Limpeza e Validação de Formato (Simples - Principal no DTO)
+        // Limpeza e Validação de Formato (principais devem estar no DTO)
         String cleanedPhoneNumber = phoneNumber.replaceAll("[^0-9+]", "");
-        if (!cleanedPhoneNumber.startsWith("+") || cleanedPhoneNumber.length() < 11) {
+        if (!cleanedPhoneNumber.startsWith("+") || cleanedPhoneNumber.length() < 11) { // Checagem mínima de formato E.164
             log.warn("addDriver: Falha na validação - Formato de telefone inválido: '{}' (original: '{}')", cleanedPhoneNumber, phoneNumber);
             throw new IllegalArgumentException("Formato de telefone inválido. Use o padrão internacional (+55...).");
         }
-        String cleanedPlate = plate.toUpperCase().trim(); // Padroniza antes de salvar
+        String cleanedPlate = plate.toUpperCase().trim();
 
-        // 3. Criação da Entidade
+        // Criação da Entidade
         Driver driver = new Driver();
         driver.setPlate(cleanedPlate);
         driver.setName(name.trim());
@@ -80,12 +80,12 @@ public class DriverService {
         driver.setEntryTime(LocalDateTime.now());
         driver.setStatus(Driver.DriverStatus.WAITING);
 
-        // 4. Persistência
+        // Persistência
         Driver savedDriver = driverRepository.save(driver);
         log.info("addDriver: Motorista adicionado com sucesso: ID={}, Nome={}, Placa={}",
                 savedDriver.getId(), savedDriver.getName(), savedDriver.getPlate());
         return savedDriver;
-    }
+    } // <-- CHAVE FECHANDO addDriver CORRETAMENTE
 
     /**
      * Retorna a lista de motoristas que estão atualmente aguardando na fila (status WAITING).
@@ -93,18 +93,31 @@ public class DriverService {
      *
      * @return Uma lista (List) de objetos Driver com status WAITING, ou uma lista vazia se não houver nenhum.
      */
-    @Transactional(readOnly = true) // Otimização para consulta
+    @Transactional(readOnly = true)
     public List<Driver> getAdminQueueView() {
         log.debug("getAdminQueueView: Buscando motoristas WAITING.");
-        return driverRepository.findByStatusOrderByEntryTimeAsc(Driver.DriverStatus.WAITING);
-    }
+        List<Driver> waitingDrivers = driverRepository.findByStatusOrderByEntryTimeAsc(Driver.DriverStatus.WAITING);
+        return waitingDrivers != null ? waitingDrivers : Collections.emptyList();
+    } // <-- CHAVE FECHANDO getAdminQueueView CORRETAMENTE
 
     /**
-     * Encontra o próximo motorista na fila (o mais antigo com status WAITING),
-     * atualiza seu status para CALLED, define o horário da chamada e tenta
-     * enviar uma notificação por SMS.
+     * Retorna a lista de motoristas que já foram chamados (status CALLED).
+     * A lista é ordenada pelo horário da chamada (o mais recente primeiro).
      *
-     * @return Um Optional contendo o motorista que foi chamado, ou Optional.empty() se a fila estiver vazia.
+     * @return Uma lista (List) de objetos Driver com status CALLED, ou uma lista vazia se não houver nenhum.
+     */
+    @Transactional(readOnly = true)
+    public List<Driver> getCalledDriversView() {
+        log.debug("getCalledDriversView: Buscando motoristas CALLED ordenados por calledTime DESC.");
+        List<Driver> calledDrivers = driverRepository.findByStatusOrderByCalledTimeDesc(Driver.DriverStatus.CALLED);
+        return calledDrivers != null ? calledDrivers : Collections.emptyList();
+    } // <-- CHAVE FECHANDO getCalledDriversView CORRETAMENTE
+
+    /**
+     * Encontra o próximo motorista na fila, atualiza seu status para CALLED,
+     * define o horário da chamada e tenta enviar uma notificação por SMS.
+     *
+     * @return Um Optional contendo o motorista chamado, ou Optional.empty() se a fila estiver vazia.
      */
     @Transactional
     public Optional<Driver> callNextDriver() {
@@ -131,19 +144,16 @@ public class DriverService {
             } catch (Exception e) {
                 log.error("callNextDriver: Erro ao tentar enviar SMS para Motorista ID {} ({}): {}",
                         driverToCall.getId(), driverToCall.getName(), e.getMessage(), e);
-                // Não relança a exceção para não impedir a chamada
             }
-
             return Optional.of(driverToCall);
         } else {
             log.info("callNextDriver: Nenhum motorista encontrado para chamar.");
             return Optional.empty();
         }
-    }
+    } // <-- CHAVE FECHANDO callNextDriver CORRETAMENTE
 
     /**
      * Muda o status de TODOS os motoristas atualmente com status WAITING para CLEARED.
-     * Usado pela funcionalidade "Limpar Fila" do administrador.
      *
      * @return O número de motoristas que tiveram seu status alterado para CLEARED.
      */
@@ -162,5 +172,61 @@ public class DriverService {
         driverRepository.saveAll(waitingDrivers);
         log.warn("clearWaitingList: Fila limpa. {} motoristas tiveram o status alterado para CLEARED.", waitingDrivers.size());
         return waitingDrivers.size();
-    }
-}
+    } // <-- CHAVE FECHANDO clearWaitingList CORRETAMENTE
+
+
+    // --- NOVOS MÉTODOS ADICIONADOS ABAIXO ---
+
+    /**
+     * Marca um motorista específico como tendo comparecido (status ATTENDED).
+     * Loga um aviso se o motorista não for encontrado ou não estiver no status CALLED.
+     *
+     * @param driverId O ID do motorista a ser marcado como comparecido.
+     * @throws IllegalArgumentException se o motorista não for encontrado ou não estiver no status CALLED.
+     */
+    @Transactional // Usando a anotação do Spring
+    public void markDriverAsAttended(Long driverId) {
+        log.info("markDriverAsAttended: Tentando marcar motorista ID {} como ATTENDED.", driverId);
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> {
+                    log.warn("markDriverAsAttended: Motorista com ID {} não encontrado.", driverId);
+                    return new IllegalArgumentException("Motorista não encontrado com ID: " + driverId);
+                });
+
+        if (driver.getStatus() != Driver.DriverStatus.CALLED) {
+            log.warn("markDriverAsAttended: Motorista ID {} não está com status CALLED (status atual: {}). Não pode ser marcado como ATTENDED.", driverId, driver.getStatus());
+            throw new IllegalArgumentException("Motorista " + driver.getName() + " não está aguardando confirmação (status não é CALLED).");
+        }
+
+        driver.setStatus(Driver.DriverStatus.ATTENDED);
+        driverRepository.save(driver);
+        log.info("markDriverAsAttended: Motorista ID {} ({}) marcado como ATTENDED com sucesso.", driverId, driver.getName());
+    } // <-- CHAVE FECHANDO markDriverAsAttended CORRETAMENTE
+
+    /**
+     * Marca um motorista específico como não tendo comparecido (status NO_SHOW).
+     * Loga um aviso se o motorista não for encontrado ou não estiver no status CALLED.
+     *
+     * @param driverId O ID do motorista a ser marcado como não compareceu.
+     * @throws IllegalArgumentException se o motorista não for encontrado ou não estiver no status CALLED.
+     */
+    @Transactional // Usando a anotação do Spring
+    public void markDriverAsNoShow(Long driverId) {
+        log.info("markDriverAsNoShow: Tentando marcar motorista ID {} como NO_SHOW.", driverId);
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> {
+                    log.warn("markDriverAsNoShow: Motorista com ID {} não encontrado.", driverId);
+                    return new IllegalArgumentException("Motorista não encontrado com ID: " + driverId);
+                });
+
+        if (driver.getStatus() != Driver.DriverStatus.CALLED) {
+            log.warn("markDriverAsNoShow: Motorista ID {} não está com status CALLED (status atual: {}). Não pode ser marcado como NO_SHOW.", driverId, driver.getStatus());
+            throw new IllegalArgumentException("Motorista " + driver.getName() + " não está aguardando confirmação (status não é CALLED).");
+        }
+
+        driver.setStatus(Driver.DriverStatus.NO_SHOW);
+        driverRepository.save(driver);
+        log.info("markDriverAsNoShow: Motorista ID {} ({}) marcado como NO_SHOW com sucesso.", driverId, driver.getName());
+    } // <-- CHAVE FECHANDO markDriverAsNoShow CORRETAMENTE
+
+} // <<<=== CHAVE FINAL FECHANDO A CLASSE DriverService

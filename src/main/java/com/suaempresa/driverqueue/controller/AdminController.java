@@ -8,8 +8,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.*; // Import geral para anotações
+import org.springframework.web.bind.annotation.PathVariable; // <-- IMPORT NECESSÁRIO
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,36 +45,52 @@ public class AdminController {
     @GetMapping
     public String showAdminPage(Model model) {
         log.info("GET /admin : Exibindo página de administração.");
-        // A fila é carregada dinamicamente via JavaScript chamando a API /admin/queue
         return "admin-view";
     }
 
     /**
      * Endpoint da API REST para obter a lista atual de motoristas aguardando (status WAITING).
-     * Usado pelo JavaScript da página de administração para atualização (polling).
      * Mapeado para GET /admin/queue.
      *
      * @return ResponseEntity contendo a lista de motoristas (JSON) e status 200 OK,
      *         ou status 500 Internal Server Error em caso de falha.
      */
     @GetMapping("/queue")
-    @ResponseBody // Retorna o corpo da resposta diretamente (serializado para JSON)
+    @ResponseBody
     public ResponseEntity<List<Driver>> getQueueData() {
-        log.debug("API GET /admin/queue : Buscando dados da fila.");
+        log.debug("API GET /admin/queue : Buscando dados da fila de espera.");
         try {
             List<Driver> queue = driverService.getAdminQueueView();
             return ResponseEntity.ok(queue);
         } catch (Exception e) {
-            log.error("API GET /admin/queue : Erro ao buscar dados da fila!", e);
-            // Não retornar a exceção diretamente para o cliente por segurança
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            log.error("API GET /admin/queue : Erro ao buscar dados da fila de espera!", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.emptyList());
+        }
+    }
+
+    /**
+     * Endpoint da API REST para obter a lista atual de motoristas JÁ CHAMADOS (status CALLED).
+     * Mapeado para GET /admin/called-drivers.
+     *
+     * @return ResponseEntity contendo a lista de motoristas chamados (JSON) e status 200 OK,
+     *         ou status 500 Internal Server Error em caso de falha.
+     */
+    @GetMapping("/called-drivers")
+    @ResponseBody
+    public ResponseEntity<List<Driver>> getCalledDriversData() {
+        log.debug("API GET /admin/called-drivers : Buscando dados de motoristas chamados.");
+        try {
+            List<Driver> calledDrivers = driverService.getCalledDriversView();
+            return ResponseEntity.ok(calledDrivers);
+        } catch (Exception e) {
+            log.error("API GET /admin/called-drivers : Erro ao buscar dados de motoristas chamados!", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.emptyList());
         }
     }
 
     /**
      * Endpoint da API REST para chamar o próximo motorista da fila.
      * Mapeado para POST /admin/call-next.
-     * Chama o {@link DriverService#callNextDriver()}.
      *
      * @return ResponseEntity contendo os dados do motorista chamado (JSON) e status 200 OK,
      *         ou status 404 Not Found se a fila estiver vazia,
@@ -100,7 +118,6 @@ public class AdminController {
     /**
      * Endpoint da API REST para limpar a lista de espera (mudar status WAITING para CLEARED).
      * Mapeado para POST /admin/clear-queue.
-     * Chama o {@link DriverService#clearWaitingList()}.
      *
      * @return ResponseEntity contendo uma mensagem de sucesso e status 200 OK,
      *         ou status apropriado em caso de erro (ex: 500).
@@ -109,7 +126,7 @@ public class AdminController {
     @ResponseBody
     public ResponseEntity<String> clearQueue() {
         log.warn("API POST /admin/clear-queue : Requisição para limpar fila.");
-        if (!confirmActionSafety()) { // Simulação de verificação de segurança
+        if (!confirmActionSafety()) {
             log.warn("API POST /admin/clear-queue : Ação de limpar fila bloqueada por regras internas.");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Ação não permitida no momento.");
         }
@@ -124,8 +141,64 @@ public class AdminController {
         }
     }
 
+    // --- NOVOS ENDPOINTS PARA CONFIRMAÇÃO DE COMPARECIMENTO ---
+
+    /**
+     * Endpoint da API REST para marcar um motorista como compareceu (ATTENDED).
+     * Mapeado para POST /admin/driver/{id}/attended
+     * O ID do motorista é passado como parte da URL (PathVariable).
+     *
+     * @param id O ID do motorista a ser marcado.
+     * @return ResponseEntity com status 200 OK e mensagem de sucesso,
+     *         ou status 400 Bad Request se o motorista não puder ser marcado (não encontrado/status errado),
+     *         ou status 500 Internal Server Error para outros erros.
+     */
+    @PostMapping("/driver/{id}/attended") // <<< NOVO MÉTODO ADICIONADO AQUI
+    @ResponseBody
+    public ResponseEntity<String> markAttended(@PathVariable Long id) {
+        log.info("API POST /admin/driver/{}/attended : Marcando como compareceu.", id);
+        try {
+            driverService.markDriverAsAttended(id);
+            return ResponseEntity.ok("Motorista ID " + id + " marcado como ATTENDED.");
+        } catch (IllegalArgumentException e) {
+            // Erro esperado se ID não existe ou status errado
+            log.warn("API POST /admin/driver/{}/attended : Falha - {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            log.error("API POST /admin/driver/{}/attended : Erro inesperado!", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro interno ao marcar comparecimento.");
+        }
+    }
+
+    /**
+     * Endpoint da API REST para marcar um motorista como não compareceu (NO_SHOW).
+     * Mapeado para POST /admin/driver/{id}/no-show
+     * O ID do motorista é passado como parte da URL (PathVariable).
+     *
+     * @param id O ID do motorista a ser marcado.
+     * @return ResponseEntity com status 200 OK e mensagem de sucesso,
+     *         ou status 400 Bad Request se o motorista não puder ser marcado (não encontrado/status errado),
+     *         ou status 500 Internal Server Error para outros erros.
+     */
+    @PostMapping("/driver/{id}/no-show") // <<< NOVO MÉTODO ADICIONADO AQUI
+    @ResponseBody
+    public ResponseEntity<String> markNoShow(@PathVariable Long id) {
+        log.warn("API POST /admin/driver/{}/no-show : Marcando como NÃO compareceu.", id);
+        try {
+            driverService.markDriverAsNoShow(id);
+            return ResponseEntity.ok("Motorista ID " + id + " marcado como NO_SHOW.");
+        } catch (IllegalArgumentException e) {
+            log.warn("API POST /admin/driver/{}/no-show : Falha - {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            log.error("API POST /admin/driver/{}/no-show : Erro inesperado!", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro interno ao marcar não comparecimento.");
+        }
+    }
+
     // Método auxiliar apenas para exemplo, remova ou implemente lógica real se necessário.
     private boolean confirmActionSafety() {
         return true;
     }
-}
+
+} // <<< FIM DA CLASSE AdminController

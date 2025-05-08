@@ -6,30 +6,16 @@
   <title>Fila de Motoristas - Admin</title>
   <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}">
   <style>
-    /* Estilos básicos inline - Mova para style.css */
-    .container { max-width: 900px; margin: 40px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background-color: #f9f9f9; }
-    .driver-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    .driver-table th, .driver-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    .driver-table th { background-color: #f2f2f2; }
-    .action-buttons { margin-top: 20px; text-align: center; }
-    .action-buttons button { margin: 0 10px; padding: 10px 15px; cursor: pointer; border-radius: 4px; border: none; font-size: 16px; }
-    .btn-success { background-color: #28a745; color: white; }
-    .btn-success:hover:not(:disabled) { background-color: #218838; }
-    .btn-danger { background-color: #dc3545; color: white; }
-    .btn-danger:hover:not(:disabled) { background-color: #c82333; }
-    button:disabled { background-color: #cccccc; cursor: not-allowed; }
-    #admin-feedback { margin-top: 15px; padding: 10px; border-radius: 4px; text-align: center; font-weight: bold; display: none; /* Mostrado via JS */ }
-    #admin-feedback.success { color: #155724; background-color: #d4edda; border: 1px solid #c3e6cb; display: block; }
-    #admin-feedback.error { color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; display: block; }
-    #admin-feedback.info { color: #0c5460; background-color: #d1ecf1; border: 1px solid #bee5eb; display: block; }
-    #no-drivers-message { display: none; text-align: center; margin-top: 20px; font-style: italic; color: #666; }
-    .home-link { text-align: center; margin-top: 30px; }
+    /* ... seus estilos existentes ... */
+    .section-title { margin-top: 30px; margin-bottom: 15px; font-size: 1.5em; border-bottom: 1px solid #ccc; padding-bottom: 5px;}
   </style>
 </head>
 <body>
 <div class="container">
   <h1>Administração da Fila</h1>
 
+  <!-- Seção da Fila de Espera -->
+  <h2 class="section-title">Fila de Espera (Status: AGUARDANDO)</h2>
   <div class="queue-table-container">
     <table class="driver-table" id="driver-queue-table">
       <thead>
@@ -37,37 +23,56 @@
         <th>Pos.</th>
         <th>Nome</th>
         <th>Placa</th>
-        <th>Telefone</th> <!-- Coluna adicionada -->
+        <th>Telefone</th>
         <th>Entrada</th>
-        <!-- <th>Ação</th> Coluna de Ação individual removida -->
       </tr>
       </thead>
       <tbody id="driver-queue-body">
-      <!-- Carregando... será substituído pelo JS -->
-      <tr><td colspan="5">Carregando fila...</td></tr>
+      <tr><td colspan="5">Carregando fila de espera...</td></tr>
       </tbody>
     </table>
-    <!-- Mensagem para quando a fila estiver vazia -->
-    <div id="no-drivers-message">
+    <div id="no-drivers-message" style="display: none; text-align: center; margin-top: 20px;">
       Nenhum motorista aguardando no momento.
     </div>
   </div>
 
-  <!-- Botões de Ação Gerais -->
   <div class="action-buttons">
     <button id="call-next-btn" class="btn btn-success" disabled>Chamar Próximo</button>
     <button id="clear-queue-btn" class="btn btn-danger" disabled>Limpar Lista de Espera</button>
   </div>
-
-  <!-- Feedback para Ações do Admin -->
   <div id="admin-feedback"></div>
+
+  <!-- NOVA SEÇÃO: Motoristas Chamados -->
+  <h2 class="section-title">Motoristas Chamados (Status: CHAMADO)</h2>
+  <div class="queue-table-container">
+    <table class="driver-table" id="called-drivers-table"> <!-- Novo ID -->
+      <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Placa</th>
+        <th>Telefone</th>
+        <th>Entrada</th>
+        <th>Chamado Em</th>
+        <th>Ações</th>
+      </tr>
+      </thead>
+      <tbody id="called-drivers-body"> <!-- Novo ID -->
+      <tr><td colspan="6">Carregando motoristas chamados...</td></tr>
+      </tbody>
+    </table>
+    <div id="no-called-drivers-message" style="display: none; text-align: center; margin-top: 20px;">
+      Nenhum motorista foi chamado recentemente.
+    </div>
+  </div>
+  <!-- FIM DA NOVA SEÇÃO -->
 
   <p class="home-link">
     <a th:href="@{/}">Voltar para Entrada de Motorista</a>
+    <br>
+    <a th:href="@{/logout}">Sair (Logout)</a> <!-- Adicionado link de logout -->
   </p>
 </div>
 
-<!-- Script JavaScript para interatividade -->
 <script th:src="@{/js/admin.js}"></script>
 </body>
 </html>

@@ -9,30 +9,21 @@ import java.util.Optional;
 
 /**
  * Repositório Spring Data JPA para a entidade {@link Driver}.
- * Fornece métodos CRUD básicos (save, findById, findAll, deleteById, etc.)
- * e métodos de consulta personalizados baseados na convenção de nomes ou {@code @Query}.
+ * Fornece métodos CRUD básicos e métodos de consulta personalizados.
  */
 @Repository
 public interface DriverRepository extends JpaRepository<Driver, Long> {
 
-    /**
-     * Encontra todos os motoristas com um status específico, ordenados pelo
-     * horário de entrada em ordem ascendente (o mais antigo primeiro).
-     *
-     * @param status O {@link Driver.DriverStatus} a ser buscado.
-     * @return Uma lista de motoristas que correspondem ao status, ordenada por entryTime.
-     */
+    // ... métodos existentes ...
     List<Driver> findByStatusOrderByEntryTimeAsc(Driver.DriverStatus status);
-
-    /**
-     * Encontra o primeiro (mais antigo) motorista com um status específico,
-     * ordenado pelo horário de entrada em ordem ascendente.
-     * Útil para encontrar o próximo motorista a ser chamado na fila.
-     *
-     * @param status O {@link Driver.DriverStatus} a ser buscado (geralmente WAITING).
-     * @return Um {@link Optional} contendo o motorista mais antigo com o status especificado,
-     *         ou {@link Optional#empty()} se nenhum for encontrado.
-     */
     Optional<Driver> findFirstByStatusOrderByEntryTimeAsc(Driver.DriverStatus status);
 
+    /**
+     * Encontra todos os motoristas com status CALLED,
+     * ordenados pelo horário da chamada em ordem descendente (mais recente primeiro).
+     *
+     * @param status O status a ser buscado (será DriverStatus.CALLED).
+     * @return Uma lista de motoristas chamados, ordenada por calledTime.
+     */
+    List<Driver> findByStatusOrderByCalledTimeDesc(Driver.DriverStatus status); // NOVO MÉTODO
 }
