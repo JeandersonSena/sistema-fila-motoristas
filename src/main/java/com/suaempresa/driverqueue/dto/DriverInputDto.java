@@ -24,7 +24,7 @@ public class DriverInputDto {
 
     /** Número de telefone fornecido pelo motorista (formato E.164 esperado). */
     @NotBlank(message = "O número de telefone não pode estar em branco.")
-    @Pattern(regexp = "^\\+[1-9]\\d{10,14}$", message = "Formato de telefone inválido (Ex: +55119...).")
+    @Pattern(regexp = "^(\\(\\d{2}\\)\\s?)?\\d{4,5}-?\\d{4}$|^\\d{10,11}$", message = "Formato de telefone inválido. Use (XX) XXXXX-XXXX ou XXXXXXXXXXX.")
     private String phoneNumber;
 
     // --- Getters e Setters ---

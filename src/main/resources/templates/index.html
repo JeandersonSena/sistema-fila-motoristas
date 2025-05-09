@@ -95,11 +95,13 @@
                 <div class="mb-3">
                     <label for="phoneNumber" class="form-label">Telefone (com DDD):</label>
                     <input type="tel" id="phoneNumber" th:field="*{phoneNumber}" class="form-control" required
-                           placeholder="Ex: +5571987654321"
-                           pattern="^\+[1-9]\d{10,14}$"
-                           title="Formato internacional: +CódigoPaísDDDNúmero (ex: +5571987654321)">
+                           placeholder="(DDD) XXXXX-XXXX ou DDDXXXXXXXXX"
+                           pattern="^(\([0-9]{2}\)\s?)?[0-9]{4,5}-?[0-9]{4}$|^[0-9]{10,11}$"
+                           aria-describedby="phoneHelpBlock"> <!-- Adiciona aria-describedby -->
+
+
                     <div class="invalid-feedback" th:if="${#fields.hasErrors('phoneNumber')}" th:errors="*{phoneNumber}">
-                        Por favor, insira um telefone válido no formato internacional.
+                        Por favor, insira um telefone válido no formato indicado.
                     </div>
                 </div>
 

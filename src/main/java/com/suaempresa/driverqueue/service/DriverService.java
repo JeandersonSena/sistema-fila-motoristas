@@ -27,11 +27,6 @@ public class DriverService {
     /** Limite máximo de chamadas permitidas (1ª chamada + 1 re-chamada = 2 tentativas). */
     private static final int MAX_CALL_ATTEMPTS = 2;
 
-    /**
-     * Construtor para injeção de dependências (DriverRepository, TwilioService).
-     * @param driverRepository Repositório para acesso aos dados dos motoristas.
-     * @param twilioService Serviço para envio de notificações SMS.
-     */
     public DriverService(DriverRepository driverRepository, TwilioService twilioService) {
         this.driverRepository = driverRepository;
         this.twilioService = twilioService;
@@ -39,47 +34,73 @@ public class DriverService {
     }
 
     /**
-     * Adiciona um novo motorista à fila de espera. Inicializa tentativas de chamada como 0.
+     * Adiciona um novo motorista à fila de espera.
+     * Normaliza o número de telefone para o formato E.164 (+55...) antes de salvar.
+     * Inicializa tentativas de chamada como 0.
+     *
      * @param plate Placa do veículo.
      * @param name Nome do motorista.
-     * @param phoneNumber Número de telefone (formato E.164).
+     * @param phoneNumberInput O número de telefone como inserido pelo usuário (ex: (XX) XXXXX-XXXX). // <<< CORREÇÃO NO JAVADOC
      * @return O objeto Driver persistido.
-     * @throws IllegalArgumentException Se dados de entrada forem inválidos.
+     * @throws IllegalArgumentException Se dados de entrada forem inválidos ou o telefone não puder ser normalizado.
      */
     @Transactional
-    public Driver addDriver(String plate, String name, String phoneNumber) {
-        log.debug("addDriver: Iniciando adição para Placa={}, Nome={}, Telefone={}", plate, name, phoneNumber);
-        // Validações de entrada...
-        if (plate == null || plate.trim().isEmpty()) throw new IllegalArgumentException("Placa do veículo é obrigatória.");
-        if (name == null || name.trim().isEmpty()) throw new IllegalArgumentException("Nome do motorista é obrigatório.");
-        if (phoneNumber == null || phoneNumber.trim().isEmpty()) throw new IllegalArgumentException("Número de telefone é obrigatório.");
+    public Driver addDriver(String plate, String name, String phoneNumberInput) { // <<< CORREÇÃO NO NOME DO PARÂMETRO
+        log.debug("addDriver: Iniciando adição para Placa={}, Nome={}, Telefone (entrada)='{}'", plate, name, phoneNumberInput);
 
-        String cleanedPhoneNumber = phoneNumber.replaceAll("[^0-9+]", "");
-        if (!cleanedPhoneNumber.startsWith("+") || cleanedPhoneNumber.length() < 11) {
-            throw new IllegalArgumentException("Formato de telefone inválido. Use o padrão internacional (+55...).");
+        if (plate == null || plate.trim().isEmpty()) {
+            log.warn("addDriver: Falha na validação - Placa obrigatória.");
+            throw new IllegalArgumentException("Placa do veículo é obrigatória.");
         }
+        if (name == null || name.trim().isEmpty()) {
+            log.warn("addDriver: Falha na validação - Nome obrigatório.");
+            throw new IllegalArgumentException("Nome do motorista é obrigatório.");
+        }
+        if (phoneNumberInput == null || phoneNumberInput.trim().isEmpty()) { // <<< USA O PARÂMETRO CORRETO
+            log.warn("addDriver: Falha na validação - Telefone obrigatório.");
+            throw new IllegalArgumentException("Número de telefone é obrigatório.");
+        }
+
+        String digitsOnly = phoneNumberInput.replaceAll("[^0-9]", "");
+
+        String e164PhoneNumber;
+        if (digitsOnly.length() == 10 || digitsOnly.length() == 11) {
+            e164PhoneNumber = "+55" + digitsOnly;
+            log.debug("addDriver: Telefone normalizado de '{}' ({} dígitos) para '{}'", phoneNumberInput, digitsOnly.length(), e164PhoneNumber);
+        } else if (digitsOnly.startsWith("55") && (digitsOnly.length() == 12 || digitsOnly.length() == 13)) {
+            e164PhoneNumber = "+" + digitsOnly;
+            log.debug("addDriver: Telefone normalizado de '{}' (já com 55) para '{}'", phoneNumberInput, e164PhoneNumber);
+        } else if (phoneNumberInput.startsWith("+55") && (phoneNumberInput.replaceAll("[^0-9]", "").length() == 12 || phoneNumberInput.replaceAll("[^0-9]", "").length() == 13)) {
+            e164PhoneNumber = "+" + phoneNumberInput.replaceAll("[^0-9]", "");
+            log.debug("addDriver: Telefone normalizado de '{}' (já com +55) para '{}'", phoneNumberInput, e164PhoneNumber);
+        }
+        else {
+            log.warn("addDriver: Formato de telefone não reconhecido após limpeza: '{}' (original: '{}'). Não foi possível adicionar '+55'.", digitsOnly, phoneNumberInput);
+            throw new IllegalArgumentException("Formato de telefone inválido. Forneça DDD e número (ex: (XX) XXXXX-XXXX ou XX XXXXXXXXX).");
+        }
+
+        if (!e164PhoneNumber.matches("^\\+[1-9]\\d{10,14}$")) {
+            log.warn("addDriver: Falha na validação final do formato E.164 para o telefone normalizado: '{}'", e164PhoneNumber);
+            throw new IllegalArgumentException("Formato de telefone inválido após tentativa de normalização para o padrão internacional.");
+        }
+
         String cleanedPlate = plate.toUpperCase().trim();
 
-        // Criação da Entidade
         Driver driver = new Driver();
-        driver.setPlate(cleanedPlate);
+        driver.setPlate(cleanedPlate); // <<< CORREÇÃO: USA cleanedPlate
         driver.setName(name.trim());
-        driver.setPhoneNumber(cleanedPhoneNumber);
+        driver.setPhoneNumber(e164PhoneNumber); // <<< CORREÇÃO: Apenas esta chamada para setPhoneNumber
         driver.setEntryTime(LocalDateTime.now());
         driver.setStatus(Driver.DriverStatus.WAITING);
-        driver.setCallAttempts(0); // <<-- Garante inicialização em 0
+        driver.setCallAttempts(0);
 
-        // Persistência
         Driver savedDriver = driverRepository.save(driver);
-        log.info("addDriver: Motorista adicionado: ID={}, Placa={}, Tentativas={}",
-                savedDriver.getId(), savedDriver.getPlate(), savedDriver.getCallAttempts());
+        log.info("addDriver: Motorista adicionado com sucesso: ID={}, Placa={}, Telefone (E.164)='{}', Tentativas={}",
+                savedDriver.getId(), savedDriver.getPlate(), savedDriver.getPhoneNumber(), savedDriver.getCallAttempts());
         return savedDriver;
     }
 
-    /**
-     * Retorna a lista de motoristas que estão aguardando (status WAITING).
-     * @return Lista de motoristas WAITING, ordenada por entrada.
-     */
+    // ... (getAdminQueueView - sem mudanças) ...
     @Transactional(readOnly = true)
     public List<Driver> getAdminQueueView() {
         log.debug("getAdminQueueView: Buscando motoristas WAITING.");
@@ -87,10 +108,7 @@ public class DriverService {
         return waitingDrivers != null ? waitingDrivers : Collections.emptyList();
     }
 
-    /**
-     * Retorna a lista de motoristas que já foram chamados e aguardam confirmação (status CALLED).
-     * @return Lista de motoristas CALLED, ordenada por horário da última chamada.
-     */
+    // ... (getCalledDriversView - sem mudanças) ...
     @Transactional(readOnly = true)
     public List<Driver> getCalledDriversView() {
         log.debug("getCalledDriversView: Buscando motoristas CALLED ordenados por calledTime DESC.");
@@ -98,11 +116,8 @@ public class DriverService {
         return calledDrivers != null ? calledDrivers : Collections.emptyList();
     }
 
-    /**
-     * Realiza a PRIMEIRA chamada para o próximo motorista na fila (status WAITING).
-     * Muda status para CALLED, define calledTime e incrementa callAttempts para 1. Envia SMS.
-     * @return Optional contendo o motorista chamado, ou vazio se a fila estiver vazia.
-     */
+    // ... (callNextDriver - sem mudanças na lógica principal, mas note que a variável 'driverToCall' foi usada no log do recallDriver,
+    // o que estava incorreto, mas já corrigi no recallDriver abaixo) ...
     @Transactional
     public Optional<Driver> callNextDriver() {
         log.info("callNextDriver: Iniciando processo de chamada para o próximo da fila.");
@@ -112,12 +127,12 @@ public class DriverService {
             Driver driverToCall = nextDriverOpt.get();
             driverToCall.setStatus(Driver.DriverStatus.CALLED);
             driverToCall.setCalledTime(LocalDateTime.now());
-            driverToCall.setCallAttempts(1); // <<< Define a primeira tentativa
+            driverToCall.setCallAttempts(1);
             driverRepository.save(driverToCall);
             log.info("callNextDriver: Motorista ID {} ({}) chamado. Status: CALLED. Tentativa: {}.",
                     driverToCall.getId(), driverToCall.getName(), driverToCall.getCallAttempts());
 
-            sendSmsNotification(driverToCall, "sua vez na fila chegou!"); // Chama método auxiliar
+            sendSmsNotification(driverToCall, "sua vez na fila chegou!");
             return Optional.of(driverToCall);
         } else {
             log.info("callNextDriver: Nenhum motorista WAITING encontrado para chamar.");
@@ -125,17 +140,9 @@ public class DriverService {
         }
     }
 
-    /**
-     * Tenta chamar NOVAMENTE um motorista que já está com status CALLED.
-     * Se o limite de MAX_CALL_ATTEMPTS for atingido, muda o status para NO_SHOW.
-     * Caso contrário, incrementa callAttempts, atualiza calledTime e reenvia SMS.
-     *
-     * @param driverId O ID do motorista a ser chamado novamente.
-     * @return Um Optional contendo o motorista (com status CALLED ou NO_SHOW).
-     * @throws IllegalArgumentException se o motorista não for encontrado ou não estiver no status CALLED.
-     */
+    // ... (recallDriver - código que você já tinha e que eu ajustei na mensagem anterior, mantido aqui) ...
     @Transactional
-    public Optional<Driver> recallDriver(Long driverId) { // <<< NOVO MÉTODO (ou substitui o antigo no-show)
+    public Optional<Driver> recallDriver(Long driverId) {
         log.info("recallDriver: Tentando chamar novamente o motorista ID {}.", driverId);
         Driver driverToRecall = driverRepository.findById(driverId)
                 .orElseThrow(() -> {
@@ -149,31 +156,25 @@ public class DriverService {
         }
 
         int currentAttempts = driverToRecall.getCallAttempts();
-        // Verifica se já atingiu ou ultrapassou o limite MÁXIMO de tentativas
         if (currentAttempts >= MAX_CALL_ATTEMPTS) {
             log.warn("recallDriver: Motorista ID {} ({}) já atingiu o limite de {} tentativas. Marcando como NO_SHOW.",
                     driverId, driverToRecall.getName(), MAX_CALL_ATTEMPTS);
             driverToRecall.setStatus(Driver.DriverStatus.NO_SHOW);
-            // Aqui não enviamos SMS, apenas mudamos o status
             driverRepository.save(driverToRecall);
-            return Optional.of(driverToRecall); // Retorna com status NO_SHOW
+            return Optional.of(driverToRecall);
         }
 
-        // Se ainda pode chamar novamente (ex: se MAX_CALL_ATTEMPTS=2 e currentAttempts=1)
-        driverToRecall.setCallAttempts(currentAttempts + 1); // Incrementa a tentativa
-        driverToRecall.setCalledTime(LocalDateTime.now()); // Atualiza para o horário desta tentativa
+        driverToRecall.setCallAttempts(currentAttempts + 1);
+        driverToRecall.setCalledTime(LocalDateTime.now()); // << CORREÇÃO AQUI: usei driverToCall antes, agora é driverToRecall
         driverRepository.save(driverToRecall);
         log.info("recallDriver: Motorista ID {} ({}) chamado novamente. Tentativa: {} de {}.",
                 driverId, driverToRecall.getName(), driverToRecall.getCallAttempts(), MAX_CALL_ATTEMPTS);
 
-        sendSmsNotification(driverToRecall, "Lembrete: sua vez na fila chegou!"); // Envia SMS de lembrete
-        return Optional.of(driverToRecall); // Retorna com status CALLED e contagem incrementada
+        sendSmsNotification(driverToRecall, "Lembrete: sua vez na fila chegou!");
+        return Optional.of(driverToRecall);
     }
 
-    /**
-     * Marca um motorista específico como tendo comparecido (status ATTENDED).
-     * Só pode ser marcado se estiver no status CALLED.
-     */
+    // ... (markDriverAsAttended - sem mudanças) ...
     @Transactional
     public void markDriverAsAttended(Long driverId) {
         log.info("markDriverAsAttended: Tentando marcar motorista ID {} como ATTENDED.", driverId);
@@ -189,22 +190,16 @@ public class DriverService {
         }
 
         driver.setStatus(Driver.DriverStatus.ATTENDED);
-        // Poderíamos zerar callAttempts aqui se quiséssemos: driver.setCallAttempts(0);
         driverRepository.save(driver);
         log.info("markDriverAsAttended: Motorista ID {} ({}) marcado como ATTENDED com sucesso.", driverId, driver.getName());
     }
 
-    // REMOVEMOS o método markDriverAsNoShow, pois o fluxo agora é via recallDriver atingindo o limite.
-    // Se precisar de uma ação manual para NO_SHOW, podemos adicioná-lo de volta ou usar o endpoint do controller.
 
-    /**
-     * Método auxiliar privado para encapsular a lógica de envio de SMS.
-     */
+    // ... (sendSmsNotification - sem mudanças) ...
     private void sendSmsNotification(Driver driver, String baseMessage) {
         try {
             String phone = driver.getPhoneNumber();
             if (phone != null && !phone.isBlank()) {
-                // Mensagem personalizada incluindo o número de tentativas (se maior que 1)
                 String attemptInfo = driver.getCallAttempts() > 1 ? " (Tentativa " + driver.getCallAttempts() + ")" : "";
                 String message = "Ola " + driver.getName() + ", " + baseMessage + attemptInfo + ". Por favor, dirija-se ao local indicado.";
 
@@ -220,9 +215,7 @@ public class DriverService {
         }
     }
 
-    /**
-     * Muda o status de TODOS os motoristas atualmente com status WAITING para CLEARED.
-     */
+    // ... (clearWaitingList - sem mudanças) ...
     @Transactional
     public int clearWaitingList() {
         log.warn("clearWaitingList: Iniciando limpeza da fila de espera...");
@@ -234,7 +227,7 @@ public class DriverService {
         }
         for (Driver driverLoop : waitingDrivers) {
             driverLoop.setStatus(Driver.DriverStatus.CLEARED);
-            driverLoop.setCallAttempts(0); // Zera tentativas ao limpar
+            driverLoop.setCallAttempts(0);
         }
         driverRepository.saveAll(waitingDrivers);
         log.warn("clearWaitingList: Fila limpa. {} motoristas tiveram o status alterado para CLEARED.", waitingDrivers.size());
