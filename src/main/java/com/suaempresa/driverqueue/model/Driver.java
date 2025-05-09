@@ -41,29 +41,24 @@ public class Driver {
     @Column(nullable = false, updatable = false) // Não deve ser alterado após criação
     private LocalDateTime entryTime;
 
-    /** Data e hora exatas em que o motorista foi chamado (nulo se ainda não chamado). */
+    /** Data e hora exatas em que o motorista foi chamado pela última vez. */
     @Column
     private LocalDateTime calledTime;
 
     /** Status atual do motorista na fila. */
-    @Enumerated(EnumType.STRING) // Salva como 'WAITING', 'CALLED', 'CLEARED'
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private DriverStatus status;
+
+    /** Número de vezes que este motorista foi chamado (para controle de re-chamadas). */
+    @Column(nullable = false, columnDefinition = "INT DEFAULT 0")
+    private int callAttempts = 0;
 
     /**
      * Enumeração representando os possíveis status de um motorista na fila.
      */
     public enum DriverStatus {
-        /** O motorista está aguardando ser chamado. */
-        WAITING,
-        /** O motorista já foi chamado pelo administrador. */
-        CALLED,
-        /** O motorista foi removido da fila pelo administrador (sem ser chamado). */
-        CLEARED,
-        /** O motorista foi chamado e compareceu. */
-        ATTENDED,
-        /** O motorista foi chamado mas não compareceu. */
-        NO_SHOW
+        WAITING, CALLED, CLEARED, ATTENDED, NO_SHOW
     }
 
     /** Construtor padrão sem argumentos exigido pelo JPA. */
@@ -71,9 +66,6 @@ public class Driver {
     }
 
     // --- Getters e Setters ---
-    // (Gerados automaticamente, sem necessidade de JavaDoc extenso aqui,
-    // a menos que haja lógica complexa dentro deles, o que não é o caso).
-
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getPlate() { return plate; }
@@ -88,6 +80,8 @@ public class Driver {
     public void setCalledTime(LocalDateTime calledTime) { this.calledTime = calledTime; }
     public DriverStatus getStatus() { return status; }
     public void setStatus(DriverStatus status) { this.status = status; }
+    public int getCallAttempts() { return callAttempts; }
+    public void setCallAttempts(int callAttempts) { this.callAttempts = callAttempts; }
 
     // --- equals, hashCode, toString ---
     @Override
@@ -95,16 +89,21 @@ public class Driver {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Driver driver = (Driver) o;
-        return Objects.equals(id, driver.id); // Compara apenas pelo ID para entidades JPA
+        return Objects.equals(id, driver.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id); // Usa apenas ID para consistência com equals
+        return Objects.hash(id);
     }
 
+    /**
+     * Retorna uma representação textual do objeto Driver, útil para logs.
+     * Inclui todos os campos principais, incluindo o número de tentativas de chamada.
+     * @return String representando o objeto Driver.
+     */
     @Override
-    public String toString() { // Útil para logs
+    public String toString() {
         return "Driver{" +
                 "id=" + id +
                 ", plate='" + plate + '\'' +
@@ -113,6 +112,7 @@ public class Driver {
                 ", entryTime=" + entryTime +
                 ", calledTime=" + calledTime +
                 ", status=" + status +
+                ", callAttempts=" + callAttempts + // <-- Adicionado aqui
                 '}';
     }
 }

@@ -3,70 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entrada de Motorista</title>
-    <!-- Assume que você tem um style.css em static/css -->
+    <title>Entrada de Motorista - Sistema de Fila</title>
+
+    <!-- Bootstrap CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+
+    <!-- Seu CSS customizado (SE VOCÊ TIVER UM ARQUIVO style.css, mantenha esta linha, senão remova) -->
     <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}">
+
     <style>
-        /* Estilos básicos inline para demonstração - Mova para style.css */
-        .container { max-width: 500px; margin: 40px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background-color: #f9f9f9; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input[type="text"], .form-group input[type="tel"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        .btn-primary { background-color: #007bff; color: white; }
-        .btn-primary:hover { background-color: #0056b3; }
-        .alert { padding: 15px; margin-bottom: 20px; border: 1px solid transparent; border-radius: 4px; }
-        .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
-        .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
-        .admin-link, .home-link { text-align: center; margin-top: 20px; }
+        /* Estilos customizados - Mantenha apenas o que for específico e não coberto pelo Bootstrap */
+        body {
+            background-color: #f4f7f6; /* Um cinza claro de fundo */
+            /* Considere adicionar uma fonte inspirada na Fertipar aqui ou no seu style.css */
+            /* Ex: font-family: 'Open Sans', sans-serif; (e importe-a no <head> se não for padrão) */
+        }
+        .container-custom {
+            max-width: 600px; /* Aumentei um pouco para melhor espaçamento */
+            margin-top: 50px;
+            margin-bottom: 50px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Sombra mais suave */
+        }
+        .custom-title {
+            color: #333; /* Cor escura para o título */
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+        /* Ajuste a cor do botão primário para algo da paleta Fertipar, se desejar */
+        .btn-primary {
+             background-color: #007A52; /* Exemplo: Verde Fertipar */
+             border-color: #007A52;
+        }
+        .btn-primary:hover {
+             background-color: #00533B; /* Tom mais escuro no hover */
+             border-color: #00533B;
+        }
+        /* Estilo para os links de rodapé se necessário */
+        .footer-links {
+            text-align: center;
+            margin-top: 30px;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>Registro na Fila</h1>
+<div class="container container-custom">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8"> <!-- Ajustado para ocupar um pouco mais da largura do container-custom -->
+            <h1 class="custom-title">Registro na Fila de Motoristas</h1>
 
-    <!-- Área para exibir mensagens de sucesso ou erro -->
-    <div th:if="${successMessage}" class="alert alert-success" role="alert" id="success-alert">
-        <p th:text="${successMessage}"></p>
+            <!-- Mensagens de Feedback do Spring (RedirectAttributes) -->
+            <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <span th:text="${successMessage}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <span th:text="${errorMessage}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+
+            <!-- Formulário para adicionar motorista -->
+            <!-- th:object liga o formulário ao DTO passado pelo controller -->
+            <!-- needs-validation habilita estilos de validação Bootstrap -->
+            <form th:action="@{/drivers/add}" method="post" th:object="${driverInputDto}" class="needs-validation" novalidate>
+                <div class="mb-3"> <!-- Margem inferior -->
+                    <label for="plate" class="form-label">Placa do Veículo:</label>
+                    <!-- th:field conecta o input ao campo 'plate' do driverInputDto -->
+                    <input type="text" id="plate" th:field="*{plate}" class="form-control" required
+                           placeholder="Ex: ABC-1234 ou ABC1D23"
+                           pattern="^[A-Z]{3}-?\d[A-Za-z0-9]\d{2}$"
+                           title="Formato: AAA-1234 ou ABC1D23">
+                    <!-- Exibe erros de validação para o campo 'plate' -->
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('plate')}" th:errors="*{plate}">
+                        <!-- Mensagem padrão se o th:errors não tiver conteúdo -->
+                        Por favor, insira uma placa válida.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="name" class="form-label">Nome do Motorista:</label>
+                    <input type="text" id="name" th:field="*{name}" class="form-control" required minlength="3" maxlength="100">
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">
+                        Por favor, insira um nome válido (3-100 caracteres).
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="phoneNumber" class="form-label">Telefone (com DDD):</label>
+                    <input type="tel" id="phoneNumber" th:field="*{phoneNumber}" class="form-control" required
+                           placeholder="Ex: +5571987654321"
+                           pattern="^\+[1-9]\d{10,14}$"
+                           title="Formato internacional: +CódigoPaísDDDNúmero (ex: +5571987654321)">
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('phoneNumber')}" th:errors="*{phoneNumber}">
+                        Por favor, insira um telefone válido no formato internacional.
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2"> <!-- Para o botão ocupar largura total e dar um espaçamento -->
+                    <button type="submit" class="btn btn-primary btn-lg">Entrar na Fila</button>
+                </div>
+            </form>
+
+            <!-- Link para admin removido, pois o acesso agora é protegido -->
+            <!--
+            <p class="admin-link">
+                <a th:href="@{/admin}">Ver Fila (Administrador)</a>
+            </p>
+            -->
+        </div>
     </div>
-    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" id="error-alert">
-        <p th:text="${errorMessage}"></p>
-    </div>
-
-    <!-- Formulário para adicionar motorista -->
-    <form th:action="@{/drivers/add}" method="post" class="driver-form">
-        <div class="form-group">
-            <label for="plate">Placa do Veículo:</label>
-            <!-- Exemplo de validação HTML5 básica -->
-            <input type="text" id="plate" name="plate" required placeholder="AAA-1234 ou ABC1D23"
-                   pattern="^[A-Za-z]{3}-?\d[A-Za-z0-9]\d{2}$"
-                   title="Formato esperado: AAA-1234 ou ABC1D23">
-        </div>
-        <div class="form-group">
-            <label for="name">Nome do Motorista:</label>
-            <input type="text" id="name" name="name" required minlength="3">
-        </div>
-        <div class="form-group">
-            <label for="phoneNumber">Telefone (com código do país e DDD):</label>
-            <!-- Validação para iniciar com '+' seguido por números -->
-            <input type="tel" id="phoneNumber" name="phoneNumber" required placeholder="+5511987654321"
-                   pattern="^\+[1-9]\d{1,14}$"
-                   title="Formato internacional: +CódigoPaísCódigoÁreaNúmero (ex: +55119...)">
-        </div>
-        <button type="submit" class="btn btn-primary">Entrar na Fila</button>
-    </form>
-
-    <p class="admin-link">
-        <a th:href="@{/admin}">Ver Fila (Administrador)</a>
-    </p>
 </div>
 
-<!-- Script para esconder alertas após um tempo -->
+<!-- Bootstrap JS Bundle (colocado no final para melhor performance de carregamento) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
+        crossorigin="anonymous"></script>
+
+<!-- Script para habilitar os estilos de validação do Bootstrap -->
+<script>
+    // IIFE para evitar poluir o escopo global
+    (function () {
+      'use strict'
+      // Busca todos os formulários que queremos aplicar estilos de validação customizados do Bootstrap
+      var forms = document.querySelectorAll('.needs-validation')
+      // Loop sobre eles e previne submissão se inválido
+      Array.prototype.slice.call(forms)
+        .forEach(function (form) {
+          form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) { // checkValidity() é do HTML5
+              event.preventDefault()
+              event.stopPropagation()
+            }
+            form.classList.add('was-validated') // Adiciona classe para mostrar estilos de validação
+          }, false)
+        })
+    })()
+</script>
+
+<!-- Script para esconder alertas de redirect (SEU SCRIPT EXISTENTE, mantenha-o) -->
 <script>
     const hideElement = (selector, timeout) => {
         const element = document.getElementById(selector);
         if (element) {
-            setTimeout(() => { element.style.display = 'none'; }, timeout);
+            setTimeout(() => {
+                // Bootstrap 5 usa 'show' para exibir, então para esconder, removemos 'show'
+                // e talvez adicionemos 'hide' se o CSS do Bootstrap usar isso, ou apenas display:none.
+                // Para alerts com data-bs-dismiss, o clique no botão já esconde.
+                // Esta função pode ser mais útil para banners que não têm botão de fechar.
+                // Se os alertas já somem com o btn-close, este script pode ser simplificado ou removido.
+                const alertInstance = bootstrap.Alert.getInstance(element);
+                if (alertInstance) {
+                    alertInstance.close();
+                } else {
+                     // Fallback se a instância não for encontrada (ex: se não for um alerta Bootstrap)
+                     element.style.display = 'none';
+                }
+            }, timeout);
         }
     };
     hideElement('success-alert', 5000); // Esconde sucesso após 5s
